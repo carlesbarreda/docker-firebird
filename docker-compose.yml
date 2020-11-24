@@ -1,8 +1,8 @@
-version: '3.8'
+version: '2'
 
 services:
         firebird:
-                image: carlesbarreda/firebird:2.5.9
+                image: carlesbarreda/firebird:latest
                 container_name: firebird
                 hostname: firebird
                 ports:
