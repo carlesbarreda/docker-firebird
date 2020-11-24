@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+        firebird:
+                image: carlesbarreda/firebird:2.5.9-amd64
+                container_name: firebird
+                hostname: firebird
+                ports:
+                        - "3050:3050/tcp"
+                volumes:
+                        - ./databases:/srv/firebird
