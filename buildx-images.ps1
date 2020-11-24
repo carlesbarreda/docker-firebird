@@ -2,8 +2,8 @@ $AUTHOR="carlesbarreda"
 $PROJECT="firebird"
 $VERSION="2.5.9"
 
-$IMAGE_NAME=${AUTHOR}/${PROJECT}
-$IMAGE_TAG=${VERSION}
+$IMAGE_NAME="${AUTHOR}/${PROJECT}"
+$IMAGE_TAG="${VERSION}"
 $IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
 
 docker context create --from default ${PROJECT}
