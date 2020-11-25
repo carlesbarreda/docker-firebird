@@ -1,4 +1,4 @@
-version: '2'
+version: '3.3'
 
 services:
         firebird:
@@ -8,4 +8,7 @@ services:
                 ports:
                         - "3050:3050/tcp"
                 volumes:
-                        - ./databases:/srv/firebird
+                        - databases:/srv/firebird
+
+volumes:
+    databases: {}
