@@ -14,7 +14,7 @@ RUN cp /etc/apt/sources.list /etc/apt/sources.list.d/deb-sources.list \
 	&& mkdir /dist \
 	&& curl https://codeload.github.com/carlesbarreda/firebird/tar.gz/R2_5_9 -o /dist/firebird-R2_5_9.tar.gz \
 	&& tar xzvf /dist/firebird-R2_5_9.tar.gz \
-	&& rm -rf /var/lib/apt/lists/* ) \
+	&& rm -rf /var/lib/apt/lists/* \
 	#Patch rwlock.h (this has been fixed in later release of firebird 3.x)
 	&& cd ${FB_DIR} \
 	&& sed -i '194s/.*/#if 0/' src/common/classes/rwlock.h \
