@@ -1,8 +1,10 @@
-FROM debian:buster AS builder
+FROM --platform=${BUILDPLATFORM} debian:buster AS builder
+
+ARG BUILDPLATFORM
+ARG TARGETPLATFORM
 
 ENV FB_DIR /firebird-R2_5_9
 ENV FB_VER 2.5.9.27139-0
-ENV FB_ARCH amd64
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -12,18 +14,59 @@ RUN cp /etc/apt/sources.list /etc/apt/sources.list.d/deb-sources.list \
 	&& apt-get -y install curl \
 	&& apt-get -y build-dep firebird3.0 \
 	&& mkdir /dist \
-	&& curl https://codeload.github.com/carlesbarreda/firebird/tar.gz/R2_5_9 -o /dist/firebird-R2_5_9.tar.gz \
+	&& curl https://codeload.github.com/FirebirdSQL/firebird/tar.gz/R2_5_9 -o /dist/firebird-R2_5_9.tar.gz \
 	&& tar xzvf /dist/firebird-R2_5_9.tar.gz \
-	&& rm -rf /var/lib/apt/lists/* \
 	#Patch rwlock.h (this has been fixed in later release of firebird 3.x)
+	&& sed -i '194s/.*/#if 0/' ${FB_DIR}/src/common/classes/rwlock.h \
+	&& sed -i '92s/ rpmfile debugfile//' ${FB_DIR}/builds/install/arch-specific/linux/Makefile.in \
+	&& sed -i '/^#DatabaseAccess.*$/a DatabaseAccess = Restrict /srv/firebird' ${FB_DIR}/builds/install/misc/firebird.conf.in
+
+RUN case ${TARGETPLATFORM} in \
+	linux/amd64) \
+		export AUTOCONF_ARGS="--host=x86_64-linux-gnu" \
+		&& export ARCH=amd64 \
+		&& export FB_ARCH=amd64 \
+		&& export PLATFORM_PKG="liblsan0:${ARCH} libtsan0:${ARCH}" \
+		;; \
+	linux/386) \
+		export AUTOCONF_ARGS="--host=i686-linux-gnu" \
+		&& export ARCH=i386 \
+		&& export FB_ARCH=i686 \
+		&& export PLATFORM_PKG="" \
+		;; \
+	linux/arm/v7) \
+		export AUTOCONF_ARGS="--host=arm-linux-gnueabihf" \
+		&& export ARCH=armhf \
+		&& export FB_ARCH=arm \
+		&& export PLATFORM_PKG="liblsan0:${ARCH} libtsan0:${ARCH}" \
+		;; \
+	linux/arm64) \
+		export AUTOCONF_ARGS="--host=aarch64-linux-gnu" \
+		&& export ARCH=arm64 \
+		&& export FB_ARCH=aarch64 \
+		&& export PLATFORM_PKG="liblsan0:${ARCH} libtsan0:${ARCH}" \
+		;; \
+	esac \
+	&& [ ${BUILDPLATFORM} != ${TARGETPLATFORM} ] && ( \
+		dpkg --add-architecture ${ARCH} \
+		&& apt-get update \
+		&& apt-get -y install crossbuild-essential-${ARCH} libatomic-ops-dev:${ARCH} libncurses-dev:${ARCH} autotools-dev:${ARCH} \
+			dpkg-dev:${ARCH} libasan5:${ARCH} libatomic1:${ARCH} libbinutils:${ARCH} libboost-dev:${ARCH} libboost1.67-dev:${ARCH} \
+			libbsd-dev:${ARCH} libbsd0:${ARCH} libcc1-0:${ARCH} libcroco3:${ARCH} libdpkg-perl:${ARCH} libedit-dev:${ARCH} \
+			libedit2:${ARCH} libgcc-8-dev:${ARCH} libgdbm-compat4:${ARCH} libgdbm6:${ARCH} libglib2.0-0:${ARCH} libgomp1:${ARCH} \
+			libicu-dev:${ARCH} libicu63:${ARCH} libisl19:${ARCH} libitm1:${ARCH} libmagic-mgc:${ARCH} libmagic1:${ARCH} \
+			libmpc3:${ARCH} libmpfr6:${ARCH} libperl5.28:${ARCH} libpipeline1:${ARCH} libreadline7:${ARCH} libsigsegv2:${ARCH} \
+			libstdc++-8-dev:${ARCH} libtommath-dev:${ARCH} libtommath1:${ARCH} libtool:${ARCH} libubsan1:${ARCH} \
+			libuchardet0:${ARCH} libxml2:${ARCH} ${PLATFORM_PKG} \
+	) || ( \
+		unset AUTOCONF_ARGS \
+	) \
 	&& cd ${FB_DIR} \
-	&& sed -i '194s/.*/#if 0/' src/common/classes/rwlock.h \
-	&& sed -i '92s/ rpmfile debugfile//' builds/install/arch-specific/linux/Makefile.in \
-	&& sed -i '/^#DatabaseAccess.*$/a DatabaseAccess = Restrict /srv/firebird' builds/install/misc/firebird.conf.in \
 	&& export PREFIX=/usr/local/firebird \
 	&& export PREFIX2=/srv/firebird \
 	&& export CXXFLAGS="-std=gnu++98 -fno-lifetime-dse -pthread" \
 	&& ./autogen.sh \
+		${AUTOCONF_ARGS} \
 		--prefix=${PREFIX} --enable-superserver --with-system-editline --with-system-icu \
 		--enable-binreloc=enable \
 		--with-fbbin=${PREFIX}/bin \
@@ -65,9 +108,10 @@ RUN cp /etc/apt/sources.list /etc/apt/sources.list.d/deb-sources.list \
 	&& echo "fi" >> /dist/start.sh \
 	&& echo "exec \"\$@\"" >> /dist/start.sh \
 	&& chmod a+x /dist/start.sh \
+	&& rm -rf /var/lib/apt/lists/* ) \
 	&& rm -rf ${FB_DIR}
 
-FROM debian:buster-slim AS image
+FROM --platform=${TARGETPLATFORM} debian:buster-slim AS image
 
 ENV PATH /usr/local/firebird/bin:$PATH
 
