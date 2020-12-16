@@ -108,7 +108,7 @@ RUN case ${TARGETPLATFORM} in \
 	&& echo "fi" >> /dist/start.sh \
 	&& echo "exec \"\$@\"" >> /dist/start.sh \
 	&& chmod a+x /dist/start.sh \
-	&& rm -rf /var/lib/apt/lists/* ) \
+	&& rm -rf /var/lib/apt/lists/* \
 	&& rm -rf ${FB_DIR}
 
 FROM --platform=${TARGETPLATFORM} debian:buster-slim AS image
